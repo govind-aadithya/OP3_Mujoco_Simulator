@@ -8,25 +8,19 @@ This ROS package is a simulation platform for OP3 Robot. It is developed to dire
 
 Install the latest version with this command:
 
-'''sh
-$ pip install mujoco
-'''
+`$ pip install mujoco`
 
 2. Viewer for MuJoCo in Python [repo](https://github.com/rohanpsingh/mujoco-python-viewer)
 
 Single line install
 
-'''sh
 `$ pip install mujoco-python-viewer`
-'''
 
 ## **Package Installation**
 
 Clone the repository to your workspace.
 
-'''sh
-$ git clone https://github.com/govind-aadithya/OP3_Mujoco_Simulator.git
-'''
+`$ git clone https://github.com/govind-aadithya/OP3_Mujoco_Simulator.git`
 
 'catkin_make op3_mujoco' or 'catkin build op3_mujoco'
 
@@ -35,6 +29,4 @@ $ git clone https://github.com/govind-aadithya/OP3_Mujoco_Simulator.git
 
 Use ros run to run the node.
 
-'''sh
-$  rosrun op3_mujoco RosPy_PostitionControl_V2_1.py
-'''
+`$  rosrun op3_mujoco RosPy_PostitionControl_V2_1.py`
