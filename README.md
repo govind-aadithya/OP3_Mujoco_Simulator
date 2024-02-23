@@ -9,7 +9,7 @@ This ROS package is a simulation platform for OP3 Robot. It is developed to dire
 Install the latest version with this command:
 
 '''sh
-$ pip install mujoco
+govind@govind: $ pip install mujoco
 '''
 
 2. Viewer for MuJoCo in Python [repo](https://github.com/rohanpsingh/mujoco-python-viewer)
