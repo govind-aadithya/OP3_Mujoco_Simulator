@@ -95,7 +95,9 @@ class mujoco_ros:
 
 def controller(model, data):
 
-    global node  
+    global node, key_press_flag  
+    
+    data.qfrc_applied.fill(0)
     
     # Assign joint values to joints in mujoco
     for i in range(len(node.actuator_names)):
@@ -122,32 +124,52 @@ def controller(model, data):
     # Apply perturbations
     # Key Map:   N = Forward Push; B = Backward Push; Z = Left Push; X = Right Push
     # Force and torque are defined for torso position in global frame; mj.mj_applyFT transforms this to generalized coordinates 
-    if (glfw.get_key(viewer.window,glfw.KEY_N) == glfw.PRESS): 
-        force = np.array([0.01, 0.0, 0.0])
+    force_x = 100.0
+    force_y = 100.0
+    force_z = 100.0
+    
+    
+    if (glfw.get_key(viewer.window,glfw.KEY_N) == 1):
+        key_press_flag[0] = 1  
+        force = np.array([force_x, 0.0, 0.0])
         torque = np.array([0.0, 0.0, 0.0])
-        mj.mj_applyFT(model, data, force, torque, np.array(pose[0:3]), 1, data.qfrc_applied)
-    if (glfw.get_key(viewer.window,glfw.KEY_B) == glfw.PRESS):
-        force = np.array([-0.01, 0.0, 0.0])
-        torque = np.array([0.0, 0.0, 0.0])
-        mj.mj_applyFT(model, data, force, torque, np.array(pose[0:3]), 1, data.qfrc_applied)
-    if (glfw.get_key(viewer.window,glfw.KEY_Z) == glfw.PRESS):
-        force = np.array([0.0, 0.01, 0.0])
-        torque = np.array([0.0, 0.0, 0.0])
-        mj.mj_applyFT(model, data, np.array([0.0, 0.01, 0.0]), np.array([0.0, 0.0, 0.0]), np.array(pose[0:3]), 1, data.qfrc_applied)
-    if (glfw.get_key(viewer.window,glfw.KEY_X) == glfw.PRESS):
-        force = np.array([0.0, -0.01, 0.0])
-        torque = np.array([0.0, 0.0, 0.0])
-        mj.mj_applyFT(model, data, np.array([0.0, -0.01, 0.0]), np.array([0.0, 0.0, 0.0]), np.array(pose[0:3]), 1, data.qfrc_applied)
+        if key_press_flag[0] != key_press_flag[1]:
+            mj.mj_applyFT(model, data, force, torque, np.array(pose[0:3]), 1, data.qfrc_applied)
 
+    if (glfw.get_key(viewer.window,glfw.KEY_B) == 1):
+        key_press_flag[0] = 1
+        force = np.array([-force_x, 0.0, 0.0])
+        torque = np.array([0.0, 0.0, 0.0])
+        if key_press_flag[0] != key_press_flag[1]:
+            mj.mj_applyFT(model, data, force, torque, np.array(pose[0:3]), 1, data.qfrc_applied)
+    
+    if (glfw.get_key(viewer.window,glfw.KEY_Z) == 1):
+        key_press_flag[0] = 1
+        force = np.array([0.0, force_y, 0.0])
+        torque = np.array([0.0, 0.0, 0.0])
+        if key_press_flag[0] != key_press_flag[1]:
+            mj.mj_applyFT(model, data, force, torque, np.array(pose[0:3]), 1, data.qfrc_applied)
 
+    if (glfw.get_key(viewer.window,glfw.KEY_X) == 1):
+        key_press_flag[0] = 1
+        force = np.array([0.0, -force_y, 0.0])
+        torque = np.array([0.0, 0.0, 0.0])
+        if key_press_flag[0] != key_press_flag[1]:
+            mj.mj_applyFT(model, data, force, torque, np.array(pose[0:3]), 1, data.qfrc_applied)
+
+    if (glfw.get_key(viewer.window,glfw.KEY_N) == glfw.RELEASE and glfw.get_key(viewer.window,glfw.KEY_B) == glfw.RELEASE and glfw.get_key(viewer.window,glfw.KEY_Z) == glfw.RELEASE and glfw.get_key(viewer.window,glfw.KEY_X) == glfw.RELEASE):
+        key_press_flag[0] = 0
+    
+    key_press_flag[1]=key_press_flag[0]
+
+    print(time.time())
+    
 
 def run_mujoco_sim():     
 
     # configure viewer
     viewer._render_every_frame = False
     # viewer._contacts = True                 # Visualize contact forces default
-
-    #glfw.set_key_callback(viewer.window, keyboard_action)
 
     #set the controller
     mj.set_mjcb_control(controller)
@@ -166,6 +188,8 @@ def run_mujoco_sim():
 # Start listner
 rospy.init_node("MuJoCo_Listner")
 
+key_press_flag = [0, 0]
+
 ## Load MuJoCo Model and data structures
 current_folder = os.path.dirname(os.path.abspath(__file__))
 xml_path = os.path.join(current_folder, "robotis_op3", "scene.xml")
@@ -175,7 +199,6 @@ data = mj.MjData(model)
 
 # create the viewer object
 viewer = mujoco_viewer.MujocoViewer(model, data, title="OP3_Simulator")
-
 
 #print(actuator_names)
 node = mujoco_ros()
