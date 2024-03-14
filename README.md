@@ -27,8 +27,10 @@ Clone the repository to your workspace.
 
 ## **Run Simulator**
 
-Use ros run to run the node.
+Use ros run to run the node. 
 
 `$  rosrun op3_mujoco RosPy_PostitionControl_V2_2.py`
 
-(Current stable version of the code is V2_1.py. Replace this with the most recent version while running.)
+Note: '$ chmod +x $filepath/finename' required before rosrun
+
+(Current stable version of the code is V2_2.py. Replace this with the most recent version while running.)
