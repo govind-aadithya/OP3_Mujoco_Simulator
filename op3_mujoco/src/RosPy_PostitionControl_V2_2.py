@@ -13,13 +13,22 @@ import glfw
 simend = 100
 
 class mujoco_ros:
-    
+
     def callback(self, data, joint): 
         
-        self.joint_angle[self.actuator_names.index(joint)] = data.data
-        #print("Recieving Data!!")
+        #print("Difference :",self.prev_angle[self.actuator_names.index(joint)] - data.data)
+        if (self.prev_angle[self.actuator_names.index(joint)] - data.data < 1 and self.prev_angle[self.actuator_names.index(joint)] - data.data > -1):
+            self.joint_angle[self.actuator_names.index(joint)] = data.data
+            #print("********************************")
+            #print("Yeah, this is useful!!")
+            #print("********************************")
+            self.prev_angle[self.actuator_names.index(joint)] = data.data
+        #print("Its Junk!!!")
 
     def __init__(self):
+        self.prev_angle = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,
+                             0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0] 
+        
         self.actuator_names = [
             "r_sho_pitch",
             "l_sho_pitch",
@@ -91,20 +100,18 @@ class mujoco_ros:
         # Publish IMU Msg
         self.publisher_Imu.publish(self.imu_msg)
 
-
 def controller(model, data):
 
-    global node, key_press_flag 
+    global node, key_press_flag
     
     # Reset applied force to 0 at each iteration
-    data.qfrc_applied.fill(0)
-    
+    data.qfrc_applied.fill(0)   
+
     # Assign joint values to joints in mujoco
     for i in range(len(node.actuator_names)):
         #print(i)
         data.ctrl[i] = node.joint_angle[i]
-    
-    
+
     # Extract sensor values required for IMU   
     imu_msg_data =[]        # order = Gyro(3x1), Accel(3x1), Orientation(4x1)
     for i in range(3):      # extract Pos, Gyro, Accel 
@@ -114,19 +121,13 @@ def controller(model, data):
             imu_msg_data.append(data.sensordata[int(len(node.actuator_names)+(3*i)):int(len(node.actuator_names)+(3*(i+1)))])
     imu_msg_data.append(data.sensordata[-4:])
 
-    '''print("Pos       : ", pose)
-    print("Imu Gyro  : ", imu_msg_data[0])
-    print("Imu Accel : ", imu_msg_data[1])
-    print("Imu Quat  : ", imu_msg_data[2])
-    print("*********************************************************")
-    '''
-
     joint_pos_feedback = []
     joint_vel_feedback = []
     joint_torque_feedback = []
+
     # Read the joint angles
     for i in range(len(node.actuator_names)):
-        joint_pos_feedback.append(data.qpos[i])
+        joint_pos_feedback.append(data.qpos[i+7])       # data.qpos len=27; 0-6 pose of model centre coordinate
         joint_vel_feedback.append(data.qvel[i])
         joint_torque_feedback.append(data.qfrc_actuator[i])
 
@@ -209,6 +210,7 @@ def run_mujoco_sim():
     # close
     viewer.close()
 
+
 # Start listner
 rospy.init_node("MuJoCo_Listner")
 
@@ -216,7 +218,7 @@ key_press_flag = [0, 0]
 
 ## Load MuJoCo Model and data structures
 current_folder = os.path.dirname(os.path.abspath(__file__))
-xml_path = os.path.join(current_folder, "robotis_op3", "scene.xml")
+xml_path = os.path.join(current_folder, "robotis_op3", "scene_lifting.xml")
 
 model = mj.MjModel.from_xml_path(xml_path)  # MuJoCo model
 data = mj.MjData(model)
@@ -230,4 +232,5 @@ node = mujoco_ros()
 
 # Initialize ROS
 run_mujoco_sim()
+
 
