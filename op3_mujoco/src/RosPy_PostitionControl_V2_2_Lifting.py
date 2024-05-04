@@ -8,7 +8,8 @@ import rospy
 from sensor_msgs.msg import JointState, Imu
 from std_msgs.msg import Header, Float64
 import glfw
-
+#import datetime
+import time
 
 simend = 100
 
@@ -16,18 +17,12 @@ class mujoco_ros:
 
     def callback(self, data, joint): 
         
-        #print("Difference :",self.prev_angle[self.actuator_names.index(joint)] - data.data)
-        if (self.prev_angle[self.actuator_names.index(joint)] - data.data < 1 and self.prev_angle[self.actuator_names.index(joint)] - data.data > -1):
-            self.joint_angle[self.actuator_names.index(joint)] = data.data
-            #print("********************************")
-            #print("Yeah, this is useful!!")
-            #print("********************************")
-            self.prev_angle[self.actuator_names.index(joint)] = data.data
-        #print("Its Junk!!!")
+        self.joint_angle[self.actuator_names.index(joint)] = data.data
+        self.trajectory.append(self.joint_angle)
+        #self.now = datetime.datetime.now()
+        #print("Ctrl Cycle, Input time duration: ", self.now.time())        
 
     def __init__(self):
-        self.prev_angle = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,
-                             0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0] 
         
         self.actuator_names = [
             "r_sho_pitch",
@@ -52,6 +47,10 @@ class mujoco_ros:
             "head_tilt"
             ]  
         
+        # Var for Trajectory Queue
+        self.trajectory = []
+
+        # Save desired joint states in the order defined in actuator_names
         self.joint_angle  = [0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,
                              0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0]  
         
@@ -66,7 +65,8 @@ class mujoco_ros:
                     
         for joint in self.actuator_names:
             topic = "/robotis_op3/"+joint+"_position/command" 
-            rospy.Subscriber(topic, Float64, self.callback, (joint))     
+            rospy.Subscriber(topic, Float64, self.callback, (joint)) 
+ 
 
     def publisher_fn(self, joint_pos_feedback, joint_vel_feedback, joint_torque_feedback, imu_msg_data):  
         
@@ -80,10 +80,7 @@ class mujoco_ros:
         self.joint_states.effort = joint_torque_feedback
 
         # Publish JointState msg
-
-        #print(self.joint_states)
         self.publisher_Joint.publish(self.joint_states)
-
 
         # Initialize IMU msg
         self.imu_msg = Imu()
@@ -100,17 +97,26 @@ class mujoco_ros:
         # Publish IMU Msg
         self.publisher_Imu.publish(self.imu_msg)
 
+        
 def controller(model, data):
 
     global node, key_press_flag
-    
+
     # Reset applied force to 0 at each iteration
     data.qfrc_applied.fill(0)   
 
+    # Pull first value from trajectory queue 
+    if len(node.trajectory) != 0:
+        joints = node.trajectory[0]
+        del node.trajectory[0]
+    else:
+        joints = node.joint_angle
+
     # Assign joint values to joints in mujoco
-    for i in range(len(node.actuator_names)):
-        #print(i)
-        data.ctrl[i] = node.joint_angle[i]
+    for i in node.actuator_names:
+        data.ctrl[node.actuator_names.index(i)] = joints[node.actuator_names.index(i)]
+    
+###################################################Sensor Feedback###########################################################
 
     # Extract sensor values required for IMU   
     imu_msg_data =[]        # order = Gyro(3x1), Accel(3x1), Orientation(4x1)
@@ -121,6 +127,7 @@ def controller(model, data):
             imu_msg_data.append(data.sensordata[int(len(node.actuator_names)+(3*i)):int(len(node.actuator_names)+(3*(i+1)))])
     imu_msg_data.append(data.sensordata[-4:])
 
+    # Clear feedback values
     joint_pos_feedback = []
     joint_vel_feedback = []
     joint_torque_feedback = []
@@ -131,6 +138,7 @@ def controller(model, data):
         joint_vel_feedback.append(data.qvel[i])
         joint_torque_feedback.append(data.qfrc_actuator[i])
 
+    
     node.publisher_fn(joint_pos_feedback, joint_vel_feedback, joint_torque_feedback, imu_msg_data)
 
     # Reset Model
@@ -145,7 +153,6 @@ def controller(model, data):
     force_z = 500.0
     
     # Limit button push to single trigger of perturbation
-    
     if (glfw.get_key(viewer.window,glfw.KEY_N) == 1):
         # Record key state
         key_press_flag[0] = 1  
@@ -218,6 +225,7 @@ key_press_flag = [0, 0]
 
 ## Load MuJoCo Model and data structures
 current_folder = os.path.dirname(os.path.abspath(__file__))
+#xml_path = os.path.join(current_folder, "robotis_op3", "scene.xml")
 xml_path = os.path.join(current_folder, "robotis_op3", "scene_lifting.xml")
 
 model = mj.MjModel.from_xml_path(xml_path)  # MuJoCo model
