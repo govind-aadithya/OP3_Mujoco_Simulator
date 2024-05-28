@@ -6,6 +6,8 @@ import numpy as np
 import os
 import rospy
 from sensor_msgs.msg import JointState, Imu
+from geometry_msgs.msg import Pose
+from rosgraph_msgs.msg import Clock
 from std_msgs.msg import Header, Float64
 import glfw
 #import datetime
@@ -62,14 +64,23 @@ class mujoco_ros:
                 
         self.publisher_Joint = rospy.Publisher('/robotis_op3/joint_states', JointState, queue_size=1)
         self.publisher_Imu = rospy.Publisher('/robotis_op3/Sim_IMU', Imu, queue_size=1)
+        self.publisher_Pose = rospy.Publisher('/robotis_op3/torso_orientation', Pose, queue_size=1)
+        self.clock_pub = rospy.Publisher('/clock', Clock, queue_size=1)
                     
         for joint in self.actuator_names:
             topic = "/robotis_op3/"+joint+"_position/command" 
             rospy.Subscriber(topic, Float64, self.callback, (joint)) 
  
 
-    def publisher_fn(self, joint_pos_feedback, joint_vel_feedback, joint_torque_feedback, imu_msg_data):  
+    def publisher_fn(self, joint_pos_feedback, joint_vel_feedback, joint_torque_feedback, imu_msg_data, pose, sim_time):  
         
+        # Create a Clock message
+        clock_msg = Clock()
+        clock_msg.clock = rospy.Time.from_sec(sim_time)
+
+        # Publish the Clock message
+        self.clock_pub.publish(clock_msg)
+
         # Initialize JointState msg    
         self.joint_states = JointState()
         self.joint_states.header = Header()
@@ -96,8 +107,18 @@ class mujoco_ros:
 
         # Publish IMU Msg
         self.publisher_Imu.publish(self.imu_msg)
-
         
+        # Initializing Quaternion msg
+        self.torso_pose = Pose()
+        # Position
+        self.torso_pose.position.x, self.torso_pose.position.y, self.torso_pose.position.z = pose
+        
+        # Orienataion
+        self.torso_pose.orientation.x, self.torso_pose.orientation.y, self.torso_pose.orientation.z, self.torso_pose.orientation.w = imu_msg_data[2]
+
+        self.publisher_Pose.publish(self.torso_pose)
+
+
 def controller(model, data):
 
     global node, key_press_flag
@@ -138,8 +159,8 @@ def controller(model, data):
         joint_vel_feedback.append(data.qvel[i])
         joint_torque_feedback.append(data.qfrc_actuator[i])
 
-    
-    node.publisher_fn(joint_pos_feedback, joint_vel_feedback, joint_torque_feedback, imu_msg_data)
+    sim_time = data.time
+    node.publisher_fn(joint_pos_feedback, joint_vel_feedback, joint_torque_feedback, imu_msg_data, pose, sim_time)
 
     # Reset Model
     if (glfw.get_key(viewer.window,glfw.KEY_BACKSPACE) == glfw.PRESS):
@@ -226,7 +247,7 @@ key_press_flag = [0, 0]
 ## Load MuJoCo Model and data structures
 current_folder = os.path.dirname(os.path.abspath(__file__))
 #xml_path = os.path.join(current_folder, "robotis_op3", "scene.xml")
-xml_path = os.path.join(current_folder, "robotis_op3", "scene_lifting.xml")
+xml_path = os.path.join(current_folder, "robotis_op3", "scene.xml")
 
 model = mj.MjModel.from_xml_path(xml_path)  # MuJoCo model
 data = mj.MjData(model)
