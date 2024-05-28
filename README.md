@@ -27,6 +27,10 @@ Clone the repository to your workspace.
 
 ## **Run Simulator**
 
+Set rosparam to use sim time with /clock topic
+
+`$  rosparam set /use_sim_time "true"`
+
 Use ros run to run the node. 
 
 `$  rosrun op3_mujoco RosPy_PostitionControl_V2_2.py`
