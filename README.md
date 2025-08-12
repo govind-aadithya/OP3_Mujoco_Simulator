@@ -22,7 +22,7 @@ Clone the repository to your workspace.
 
 `$ git clone https://github.com/govind-aadithya/OP3_Mujoco_Simulator.git`
 
-'catkin_make op3_mujoco' or 'catkin build op3_mujoco'
+`$ catkin_make op3_mujoco` or `$ catkin build op3_mujoco`
 
 
 ## **Run Simulator**
@@ -31,6 +31,6 @@ Use ros run to run the node.
 
 `$  rosrun op3_mujoco RosPy_PostitionControl_V2_2.py`
 
-Note: chmod should be done before rosrun (chmod +x ~filepath/finename)
+Note: chmod should be done before rosrun (`$ chmod +x <filepath/finename>`)
 
 (Current stable version of the code is V2_2.py. Replace this with the most recent version while running.)
